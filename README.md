@@ -15,28 +15,34 @@
 
 This module covers advanced perspectives of **Software Engineering** theory and practices, focusing on overcoming challenges of scale, complexity, and urgency in contemporary systems. It bridges historical theories with current practices for predictable, repeatable, and value-producing software development.
 
-Key themes include:
-- **Object Interaction Modelling** & Dynamic Behaviour
-- **Responsibility-Driven Design** (GRASP Patterns)
-- Modelling **Transformational**, **Rule-Based**, and **Persistence** Systems
-- Applying **Situation-Specific Patterns**
-- **Software Configuration Management** & Maintenance
-- **Technical Debt**, **Software Evolution**, and **Security**
+**Key themes include:**
+
+- Object Interaction Modelling & Dynamic Behaviour
+- Responsibility-Driven Design (GRASP Patterns)
+- Modelling Transformational, Rule-Based, and Persistence Systems
+- Applying Situation-Specific Patterns
+- Software Configuration Management & Maintenance
+- Technical Debt, Software Evolution, and Security
 
 ---
 
 ## Assignments Overview
 
-| # | Assignment | Focus Area | Key Topics | Due Date (approx.) |
-|:-|------------|------------|------------|---------------------|
-| 1 | [Responsibility Patterns](./Assignment-1-Responsibility-Patterns) | Object Interaction & GRASP | High cohesion, low coupling, assignment of responsibilities | 26 February 2026 |
-| 2 | [Situation-Specific Patterns](./Assignment-2-Situation-Specific-Patterns) | Advanced Design & Persistence | Applying contextual patterns, persistence frameworks, system evolution | 16 April 2026 |
+| # | Assignment | Format | Focus Area | Due Date |
+|:-|------------|--------|------------|----------|
+| 1 | [Responsibility Patterns](./Assignment-1-Responsibility-Patterns) | Report (Design & Modelling) | Object Interaction, GRASP, high cohesion/low coupling | 19 March 2026 |
+| 2 | [Situation-Specific Patterns](./Assignment-2-Situation-Specific-Patterns) | Code + Report | Baseline vs Optimised implementation, persistence frameworks, refactoring | 14 May 2026 |
 
-Each assignment folder contains:
-- Source code (where applicable)
-- UML/design models (documentation)
-- Full assignment report (PDF + source files)
-- Specific execution or design-rationale instructions
+---
+
+## Getting Started
+
+Each assignment is **self-contained** within its own folder. Navigate into the relevant folder and consult its internal `README.md` for specific instructions tailored to that submission.
+
+- **Assignment 1** is a design‑only report – open the PDF to review the models and analysis.
+- **Assignment 2** includes a fully functional Java/Maven implementation – follow the build and run instructions in its README.
+
+All assignments are structured to be explored independently, so you can dive straight into the one that interests you most.
 
 ---
 
@@ -46,24 +52,8 @@ These assignments collectively demonstrate the ability to:
 
 - Analyse and model system behaviour using interaction modelling techniques.
 - Apply responsibility-driven design principles to produce cohesive, loosely coupled designs.
-- Select and adapt modelling approaches for diverse system types (transformational, rule-based).
+- Select and adapt modelling approaches for diverse system types (transformational, rule-based, event-driven).
 - Evaluate and apply design patterns judiciously, acknowledging trade-offs.
 - Design persistent state management that preserves domain integrity.
 - Identify technical debt and apply refactoring to improve design quality.
 - Justify design decisions using professional terminology and clear documentation.
-
----
-
-## Getting Started
-
-### Prerequisites
-- **Java JDK 17+** (or language specified per assignment)
-- **UML Modelling Tool** (e.g., Lucidchart, Draw.io, or Papyrus – if diagrams are required)
-- No external libraries unless specified in the individual assignment READMEs.
-
-### Navigating the Repo
-Each assignment is self-contained. Navigate to the specific folder and refer to its internal `README.md` for compilation, execution, or submission guidelines.
-
-```bash
-cd Assignment-1-Responsibility-Patterns
-# Follow instructions inside

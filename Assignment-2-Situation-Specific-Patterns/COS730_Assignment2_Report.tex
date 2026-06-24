@@ -1,0 +1,969 @@
+\documentclass[12pt, a4paper]{article}
+
+% ── Packages ──────────────────────────────────────────────────────────────
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{enumitem}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{parskip}
+\usepackage{amsmath}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+
+% ── Colours ───────────────────────────────────────────────────────────────
+\definecolor{codegreen}{rgb}{0.25,0.49,0.31}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.97,0.97,0.97}
+\definecolor{upblue}{RGB}{0,61,100}
+
+% ── Code listing style ───────────────────────────────────────────────────
+\lstdefinestyle{javastyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{blue}\bfseries,
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=4,
+    language=Java,
+    frame=single,
+    rulecolor=\color{codegray}
+}
+\lstset{style=javastyle}
+
+\lstdefinestyle{outputstyle}{
+    backgroundcolor=\color{backcolour},
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codegray},
+    numbers=none
+}
+
+% ── Hyperref setup ────────────────────────────────────────────────────────
+\hypersetup{
+    colorlinks=true,
+    linkcolor=upblue,
+    urlcolor=upblue,
+    citecolor=upblue
+}
+
+% ── Header / footer ──────────────────────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small COS 730 -- Assignment 2}
+\fancyhead[R]{\small u23618583}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ══════════════════════════════════════════════════════════════════════════
+\begin{document}
+
+% ── Title page ────────────────────────────────────────────────────────────
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+
+    {\Huge\bfseries COS 730 -- Assignment 2\\[0.4cm]}
+    {\LARGE From Behavioural Models to\\Optimised Implementation\\[2cm]}
+
+    \begin{tabular}{ll}
+        \toprule
+        \textbf{Module}            & COS 730 -- Software Engineering (I) \\
+        \textbf{Assignment}        & 2 \\
+        \textbf{Student Name}      & Yohali Malaika Kamangu \\
+        \textbf{Student Number}    & u23618583 \\
+        \textbf{Date Submitted}    & 14 May 2026 \\
+        \textbf{GitHub Repository} & \url{https://github.com/YourfavCompSciGirlie/COS730} \\
+        \textbf{Language}          & Java 17 (Maven) \\
+        \bottomrule
+    \end{tabular}
+
+    \vfill
+    {\large University of Pretoria\\Department of Computer Science}
+\end{titlepage}
+
+% ── Table of contents ─────────────────────────────────────────────────────
+\tableofcontents
+\newpage
+
+% ══════════════════════════════════════════════════════════════════════════
+\section{Introduction}
+\label{sec:intro}
+
+This report documents the analysis, redesign, and empirical evaluation of the \textbf{Intelligent Submission and Review System (ISRS)} --- a system responsible for processing research output submissions, assigning peer reviewers, evaluating scores, and notifying researchers of outcomes. The work proceeds through six tasks: implementing a baseline system directly from a provided sequence diagram, identifying design flaws, extracting decision logic into a decision table, producing an optimised sequence diagram, implementing the optimised design, and empirically comparing the two versions.
+
+The system was implemented in \textbf{Java 17} using \textbf{Maven} as the build tool. Both implementations (baseline and optimised) are available in the public GitHub repository linked on the title page, organised in \texttt{Original/} and \texttt{Optimised/} directories respectively. No external frameworks were used --- the implementations rely on plain Java to keep the focus on design principles and architectural patterns.
+
+\textbf{Running the code:} Executable JAR files are provided for convenience. From the repository root:
+
+\begin{lstlisting}[style=outputstyle]
+# Baseline demo
+java -jar Original/target/original-1.0-SNAPSHOT.jar
+
+# Baseline benchmark
+java -cp Original/target/original-1.0-SNAPSHOT.jar com.isrs.original.Benchmark
+
+# Optimised demo
+java -jar Optimised/target/optimised-1.0-SNAPSHOT.jar
+
+# Optimised benchmark
+java -cp Optimised/target/optimised-1.0-SNAPSHOT.jar com.isrs.optimised.Benchmark
+\end{lstlisting}
+
+% ══════════════════════════════════════════════════════════════════════════
+\section{Task 1 -- Baseline Implementation}
+\label{sec:task1}
+
+\subsection{Implementation Overview}
+
+The baseline implementation faithfully reproduces the provided sequence diagram. Every participant, message call, self-call, loop, and alternative fragment in the diagram has a direct counterpart in the Java code, with inline comments mapping each method invocation to the corresponding diagram step.
+
+\textbf{Source code:} \texttt{Original/src/main/java/com/isrs/original/}
+
+\subsection{Participant-to-Class Mapping}
+
+\begin{table}[H]
+\centering
+\caption{Mapping of sequence diagram participants to Java classes}
+\label{tab:participant-mapping}
+\begin{tabularx}{\textwidth}{l l X}
+    \toprule
+    \textbf{Diagram Participant} & \textbf{Java Class} & \textbf{Role} \\
+    \midrule
+    Researcher (actor) & --- & Simulated in \texttt{Main.java} \\
+    UI & \texttt{UI.java} & Boundary --- receives submission, delegates to controller \\
+    SubmissionController & \texttt{SubmissionController.java} & Fat controller --- orchestrates entire pipeline \\
+    Validator & \texttt{Validator.java} & Validates submission format \\
+    Database & \texttt{Database.java} & Monolithic persistence (submissions, reviewers, scores) \\
+    ReviewerManager & \texttt{ReviewerManager.java} & Filters reviewers by conflict and workload \\
+    Reviewer & \texttt{Reviewer.java} & Domain entity --- assigned to review, submits scores \\
+    EvaluationManager & \texttt{EvaluationManager.java} & Manages evaluation: scoring, consensus, rules \\
+    NotificationService & \texttt{NotificationService.java} & Sends outcome notifications \\
+    \bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Message Call Traceability}
+
+Table~\ref{tab:message-traceability} maps every message call from the sequence diagram to its Java implementation.
+
+\begin{longtable}{c p{5.5cm} p{6.5cm}}
+    \caption{Sequence diagram message call traceability}
+    \label{tab:message-traceability} \\
+    \toprule
+    \textbf{\#} & \textbf{Diagram Message} & \textbf{Java Method Call} \\
+    \midrule
+    \endfirsthead
+    \toprule
+    \textbf{\#} & \textbf{Diagram Message} & \textbf{Java Method Call} \\
+    \midrule
+    \endhead
+    1 & Researcher $\rightarrow$ UI : submitResearchOutput(data) & \texttt{UI.submitResearchOutput()} \\
+    2 & UI $\rightarrow$ SubmissionController : submit(data) & \texttt{SubmissionController.submit()} \\
+    3 & Controller $\rightarrow$ Validator : validateFormat(data) & \texttt{Validator.validateFormat()} \\
+    4 & Controller $\rightarrow$ Database : saveSubmission(data) & \texttt{Database.saveSubmission()} \\
+    5 & Controller $\rightarrow$ ReviewerManager : getAvailableReviewers() & \texttt{ReviewerManager.getAvailableReviewers()} \\
+    6 & ReviewerManager $\rightarrow$ Database : fetchReviewers() & \texttt{Database.fetchReviewers()} \\
+    7 & ReviewerManager $\rightarrow$ self : filterConflicts() & \texttt{ReviewerManager.filterConflicts()} \\
+    8 & ReviewerManager $\rightarrow$ self : checkWorkload() & \texttt{ReviewerManager.checkWorkload()} \\
+    9 & loop: Controller $\rightarrow$ Reviewer : assignReview() & \texttt{Reviewer.assignReview()} \\
+    10 & Controller $\rightarrow$ EvalManager : startEvaluation() & \texttt{EvaluationManager.startEvaluation()} \\
+    11 & loop: Reviewer $\rightarrow$ EvalManager : submitScore() & \texttt{Reviewer.submitScore()} \\
+    12 & EvalManager $\rightarrow$ Database : saveScore(score) & \texttt{Database.saveScore()} \\
+    13 & EvalManager $\rightarrow$ self : calculateAverage() & \texttt{EvaluationManager.calculateAverage()} \\
+    14 & EvalManager $\rightarrow$ self : checkConsensus() & \texttt{EvaluationManager.checkConsensus()} \\
+    15 & EvalManager $\rightarrow$ self : applyRules() & \texttt{EvaluationManager.applyRules()} \\
+    16 & alt: EvalManager $\rightarrow$ NotifService : notifyX() & \texttt{NotificationService.notifyX()} \\
+    17 & NotificationService $\rightarrow$ Researcher : sendNotification() & \texttt{NotificationService.sendNotification()} \\
+    \bottomrule
+\end{longtable}
+
+\subsection{Execution Output}
+
+The baseline produces the following output for a valid submission with 5 reviewers (3 eligible after filtering):
+
+\begin{lstlisting}[style=outputstyle]
+[UI] Research output received: Deep Learning for Climate Prediction
+[SubmissionController] Processing submission...
+[Validator] Validation PASSED
+[Database] Submission saved with ID: SUB-XXXXXXXX
+[ReviewerManager] Getting available reviewers...
+[Database] Fetching all reviewers... (5 found)
+[ReviewerManager] Removed 1 reviewer(s) with conflicts
+[ReviewerManager] Removed 1 overloaded reviewer(s)
+[ReviewerManager] Returning 3 eligible reviewers
+[EvaluationManager] Evaluation started
+[EvaluationManager] Average score: 8.00
+[EvaluationManager] Consensus check: REACHED (range: 1.0)
+[EvaluationManager] Rules applied. Outcome: ACCEPTED
+[NotificationService] Preparing ACCEPTANCE notification
+[NotificationService] Notification sent to researcher
+\end{lstlisting}
+
+Scores of 7.5, 8.0, and 8.5 yield an average of 8.0 with consensus reached (range $1.0 \leq 3.0$), resulting in acceptance.
+
+% ══════════════════════════════════════════════════════════════════════════
+\section{Task 2 -- Design Analysis}
+\label{sec:task2}
+
+The baseline sequence diagram contains several design flaws that affect maintainability, cohesion, coupling, and extensibility. This section identifies and analyses each issue.
+
+\subsection{Redundant Message Calls}
+
+\textbf{Issue 1: Per-Score Database Persistence (3 redundant calls).}
+In the baseline, each reviewer's score triggers an individual \texttt{Database.saveScore(score)} call inside a loop. This results in \textbf{3 separate database interactions} for what is logically a single batch operation. Each call carries the overhead of method invocation, HashMap access, and console logging. A single \texttt{saveAll(List<Score>)} batch call would be semantically clearer and more efficient.
+
+\begin{lstlisting}[style=outputstyle]
+loop [each reviewer]:
+    Reviewer -> EvaluationManager : submitScore(score)
+    EvaluationManager -> Database : saveScore(score)    // called 3 times
+\end{lstlisting}
+
+\textbf{Issue 2: Three Separate Notification Methods.}
+The notification phase uses three distinct methods (\texttt{notifyAcceptance()}, \texttt{notifyRejection()}, \texttt{notifyRevision()}) instead of a single parameterised \texttt{notify(outcome)} method. This violates the DRY principle and makes adding new outcome types require creating a new method plus updating every call site.
+
+\textbf{Issue 3: Separate filterConflicts() and checkWorkload() Self-Calls.}
+The \texttt{ReviewerManager} makes two self-calls that iterate over the reviewer list sequentially. These could be combined into a single filtering pass using a composed predicate (e.g., \texttt{!hasConflict \&\& workload < 5}), reducing both the number of message calls and the number of list iterations.
+
+\subsection{GRASP Principle Violations}
+
+\textbf{Controller Bloat (High Cohesion Violation).}
+\texttt{SubmissionController} is a fat controller responsible for:
+\begin{enumerate}[nosep]
+    \item Validating submission format (step 3)
+    \item Persisting the submission to the database (step 5)
+    \item Requesting filtered reviewers from ReviewerManager (step 6)
+    \item Assigning reviews in a loop (step 9)
+    \item Triggering the evaluation lifecycle (step 10)
+\end{enumerate}
+This violates the \textbf{Controller} GRASP principle, which states that a controller should delegate to service objects rather than containing business logic.
+
+\textbf{Creator Violation.}
+The \texttt{SubmissionController} directly calls \texttt{Reviewer.assignReview()} inside a loop. According to the \textbf{Creator} principle, responsibility for creating review assignments should belong to the object that aggregates or closely uses the Reviewer objects --- a \texttt{ReviewAssignmentService}, not the controller.
+
+\textbf{Information Expert Violation.}
+\texttt{ReviewerManager} accesses \texttt{Database.fetchReviewers()} directly, while \texttt{SubmissionController} accesses \texttt{Database.saveSubmission()} directly. There is no consistent data access pattern. According to Information Expert, persistence operations should be handled by dedicated repository objects, not spread across multiple classes.
+
+\subsection{High Coupling / Low Cohesion}
+
+\textbf{SubmissionController Coupling.}
+\texttt{SubmissionController} has 4 constructor dependencies (\texttt{Validator}, \texttt{Database}, \texttt{ReviewerManager}, \texttt{EvaluationManager}), yielding an efferent coupling ($C_e$) of \textbf{4}. Meanwhile, \texttt{EvaluationManager} depends on both \texttt{Database} and \texttt{NotificationService}, combining evaluation logic with notification dispatch.
+
+\textbf{Database as God Object.}
+The \texttt{Database} class manages three unrelated concerns: submission persistence, reviewer data access, and score persistence. This violates the Single Responsibility Principle. Each concern should be in its own repository class.
+
+\textbf{EvaluationManager Mixed Responsibilities.}
+\texttt{EvaluationManager} combines four distinct responsibilities via self-calls: receiving scores, computing statistics, checking consensus, and applying business rules. These should be separated so each can be modified independently.
+
+\subsection{Poor Decision Logic Handling}
+
+The acceptance/rejection/revision decision is buried inside \texttt{EvaluationManager.applyRules()}:
+
+\begin{lstlisting}
+if (averageScore >= 7.0 && consensusReached) {
+    result = "accepted";
+} else if (averageScore < 5.0) {
+    result = "rejected";
+} else {
+    result = "revision";
+}
+\end{lstlisting}
+
+This logic is \textbf{opaque} (conditions are not documented), \textbf{string-typed} (inviting typos), \textbf{tightly coupled} (changing a rule requires modifying EvaluationManager), and \textbf{untestable in isolation}. The decision logic should be extracted into a dedicated \texttt{DecisionEngine} --- a \textbf{Pure Fabrication} in GRASP terms --- so that rules can be maintained, tested, and extended independently of the evaluation workflow.
+
+\subsection{Inefficient Control Flow}
+
+\textbf{Reviewer assignment loop controlled externally.}
+The \texttt{SubmissionController} iterates over eligible reviewers and calls \texttt{Reviewer.assignReview()} individually. This loop should be delegated to a dedicated \texttt{ReviewAssignmentService} that encapsulates the assignment strategy, following the \textbf{Indirection} GRASP principle. The current design means that any change to the assignment strategy (e.g., limiting the number of assigned reviewers, or selecting by expertise match) requires modifying the controller.
+
+\textbf{Score submission loop creates bidirectional coupling.}
+In the scoring loop, the controller iterates over reviewers and calls \texttt{Reviewer.submitScore(evaluationManager)}, which in turn calls \texttt{EvaluationManager.submitScore(score)} and then \texttt{Database.saveScore(score)}. This creates a chain of three method calls per reviewer where the \texttt{Reviewer} entity depends on the \texttt{EvaluationManager} service. A cleaner flow would have the service collect scores from reviewers without the reviewer needing to know about the evaluation subsystem.
+
+\textbf{Sequential self-calls in EvaluationManager.}
+The sequence \texttt{calculateAverage()} $\rightarrow$ \texttt{checkConsensus()} $\rightarrow$ \texttt{applyRules()} is a chain of three self-calls that must be invoked in the correct order, with each depending on state set by the previous call. This is fragile: calling \texttt{applyRules()} before \texttt{calculateAverage()} would produce incorrect results. A single \texttt{evaluate(scores)} method would eliminate this temporal coupling and reduce the number of interactions in the sequence diagram.
+
+\subsection{Behavioural Modelling Quality}
+
+Several issues in the baseline reflect poor behavioural modelling practices in the sequence diagram itself:
+
+\begin{enumerate}[nosep]
+    \item \textbf{Ambiguous activation lifelines:} The diagram does not make clear when control is held by \texttt{SubmissionController} versus when it is delegated. The controller's lifeline spans the entire interaction, suggesting it owns all behaviour --- a modelling smell that corresponds to the fat controller anti-pattern.
+
+    \item \textbf{Missing return messages:} Several interactions lack explicit return messages (e.g., \texttt{ReviewerManager $\rightarrow$ SubmissionController : filteredReviewers} is present, but \texttt{Reviewer.assignReview()} has no return). This makes the diagram inconsistent and harder to trace.
+
+    \item \textbf{Self-calls obscure responsibility:} The five self-calls in the diagram (\texttt{filterConflicts}, \texttt{checkWorkload}, \texttt{calculateAverage}, \texttt{checkConsensus}, \texttt{applyRules}) obscure the internal logic that should be modelled as separate interactions with dedicated objects. Self-calls in sequence diagrams should be reserved for genuine recursive or internal-state operations, not for multi-step algorithms that warrant their own participants.
+
+    \item \textbf{No guard conditions on alternatives:} The alt fragments for notification dispatch (\texttt{accepted}/\texttt{rejected}/\texttt{revision}) lack formal guard conditions (e.g., \texttt{[avg >= 7.0 AND consensus]}). This makes the diagram incomplete as a behavioural specification --- the reader cannot determine what triggers each path without inspecting the code.
+
+    \item \textbf{Reviewer-EvaluationManager coupling in the diagram:} The diagram shows \texttt{Reviewer $\rightarrow$ EvaluationManager : submitScore(score)}, which implies that the domain entity \texttt{Reviewer} initiates communication with the service \texttt{EvaluationManager}. This violates the principle that entities should not depend on control objects, and results in a diagram that is harder to refactor.
+\end{enumerate}
+
+\subsection{Summary of Design Issues}
+
+\begin{table}[H]
+\centering
+\caption{Summary of identified design issues in the baseline}
+\label{tab:design-issues}
+\begin{tabularx}{\textwidth}{X l X}
+    \toprule
+    \textbf{Issue} & \textbf{Principle Violated} & \textbf{Impact} \\
+    \midrule
+    Fat SubmissionController & Controller, High Cohesion & Hard to test, maintain, extend \\
+    Monolithic Database & SRP, Information Expert & Changes to one concern affect all three \\
+    3 notification methods & DRY & Adding outcomes requires new methods \\
+    Per-score DB saves in loop & Efficiency & 3 calls instead of 1 batch \\
+    Opaque decision logic & Pure Fabrication & Rules untestable in isolation \\
+    EvaluationManager self-calls & High Cohesion & Temporal coupling between 3 methods \\
+    Reviewer $\rightarrow$ EvalManager coupling & Low Coupling & Entity depends on service \\
+    External assignment loop & Indirection & Assignment strategy locked in controller \\
+    Ambiguous diagram lifelines & Behavioural modelling & Fat controller smell not visible \\
+    Missing guard conditions & Behavioural completeness & Alt paths unspecified in diagram \\
+    \bottomrule
+\end{tabularx}
+\end{table}
+
+% ══════════════════════════════════════════════════════════════════════════
+\section{Task 3 -- Decision Table}
+\label{sec:task3}
+
+\subsection{Extracted Decision Logic}
+
+All decision points in the system were identified and extracted into a single decision table. The conditions are evaluated in order: format validation first (since invalid submissions short-circuit the pipeline), then average score and consensus.
+
+\subsection{Decision Table}
+
+\begin{table}[H]
+\centering
+\caption{Decision table for the ISRS evaluation logic}
+\label{tab:decision-table}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{c c c c c l}
+    \toprule
+    \textbf{Rule} & \textbf{C1: Valid?} & \textbf{C2: Avg $\geq$ 7.0?} & \textbf{C3: Consensus?} & \textbf{C4: Avg $<$ 5.0?} & \textbf{Action} \\
+    \midrule
+    R1 & N & --- & --- & --- & \textbf{REJECT} (validation) \\
+    R2 & Y & Y   & Y   & N   & \textbf{ACCEPT} \\
+    R3 & Y & --- & --- & Y   & \textbf{REJECT} \\
+    R4 & Y & Y   & N   & N   & \textbf{REVISION REQUIRED} \\
+    R5 & Y & N   & --- & N   & \textbf{REVISION REQUIRED} \\
+    \bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\subsection{Condition Definitions}
+
+\begin{table}[H]
+\centering
+\caption{Condition definitions and their sources in the baseline}
+\label{tab:condition-defs}
+\begin{tabularx}{\textwidth}{l X l}
+    \toprule
+    \textbf{Condition} & \textbf{Definition} & \textbf{Baseline Source} \\
+    \midrule
+    C1: Format Valid? & Title, authors, field, and abstract are all non-null and non-empty & \texttt{Validator.validateFormat()} \\
+    C2: Avg $\geq$ 7.0? & Arithmetic mean of all reviewer scores meets the acceptance threshold & \texttt{EvalManager.calculateAverage()} \\
+    C3: Consensus? & Range (max $-$ min) of reviewer scores is $\leq 3.0$ & \texttt{EvalManager.checkConsensus()} \\
+    C4: Avg $<$ 5.0? & Average score falls below the rejection threshold & \texttt{EvalManager.applyRules()} \\
+    \bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Completeness Verification}
+
+The table is \textbf{complete} --- every combination of conditions maps to exactly one action:
+
+\begin{itemize}[nosep]
+    \item \textbf{R1 (Invalid format):} Immediately rejected regardless of score conditions. Short-circuits the pipeline before reviewer assignment.
+    \item \textbf{R2 (Valid + avg $\geq$ 7.0 + consensus):} The only path to acceptance. Both quality (average) and agreement (consensus) are required.
+    \item \textbf{R3 (Valid + avg $<$ 5.0):} Rejected outright. Consensus is irrelevant when the average is below the minimum threshold.
+    \item \textbf{R4 (Valid + avg $\geq$ 7.0 + no consensus):} Reviewers disagree significantly despite a high average. Revision required.
+    \item \textbf{R5 (Valid + $5.0 \leq$ avg $< 7.0$):} Average is in the indeterminate range. Regardless of consensus, revision is required.
+\end{itemize}
+
+\subsection{Advantages Over Scattered Conditionals}
+
+The decision table improves on the baseline's \texttt{applyRules()} method in several ways:
+
+\begin{enumerate}[nosep]
+    \item \textbf{Transparency:} All rules are visible in a single table rather than buried in if-else chains.
+    \item \textbf{Maintainability:} Adding a new rule requires adding a row to the table and a corresponding condition check --- no modification to existing rules.
+    \item \textbf{Testability:} Each rule can be tested independently by constructing the corresponding set of conditions.
+    \item \textbf{Traceability:} Each rule maps directly to a system requirement.
+\end{enumerate}
+
+\subsection{Replacing Scattered Diagram Logic}
+
+In the baseline sequence diagram, decision logic is scattered across three distinct locations:
+
+\begin{enumerate}[nosep]
+    \item \textbf{Validation alt fragment} (lines 16--18 of the diagram): An \texttt{alt invalid / else valid} fragment controls whether the submission proceeds. This corresponds to condition C1 and rule R1 in the decision table.
+    \item \textbf{Self-call chain} (lines 36--38): \texttt{calculateAverage()}, \texttt{checkConsensus()}, and \texttt{applyRules()} are three sequential self-calls on \texttt{EvaluationManager} that compute conditions C2, C3, and C4 individually with no visible relationship between them. The decision table unifies these into a single lookup.
+    \item \textbf{Notification alt fragment} (lines 40--47): An \texttt{alt accepted / rejected / revision} fragment selects the notification method. The conditions that trigger each branch are not specified in the diagram --- the reader must inspect the code. The decision table makes these conditions explicit (R2 $\rightarrow$ accepted, R3 $\rightarrow$ rejected, R4/R5 $\rightarrow$ revision).
+\end{enumerate}
+
+The decision table consolidates all three locations into a single, self-contained specification. The self-calls become a single \texttt{DecisionEngine.evaluate(scores)} call, and the notification alt fragment's guard conditions become the Action column of the table.
+
+\subsection{Mapping Rules to System Behaviour}
+
+Table~\ref{tab:rule-behaviour} maps each decision table rule to the concrete system behaviour it triggers, tracing the path from evaluation through notification.
+
+\begin{table}[H]
+\centering
+\caption{Decision table rules mapped to system behaviour}
+\label{tab:rule-behaviour}
+\begin{tabularx}{\textwidth}{c l X}
+    \toprule
+    \textbf{Rule} & \textbf{Action} & \textbf{System Behaviour} \\
+    \midrule
+    R1 & REJECT (validation) & Pipeline short-circuits at \texttt{Validator.validateFormat()}. No reviewers assigned, no scores collected. Error returned to UI immediately. \\
+    R2 & ACCEPT & Scores collected $\rightarrow$ average $\geq$ 7.0 with consensus $\rightarrow$ \texttt{notifyAcceptance()} $\rightarrow$ \texttt{sendNotification()} to researcher. \\
+    R3 & REJECT & Scores collected $\rightarrow$ average $<$ 5.0 $\rightarrow$ \texttt{notifyRejection()} $\rightarrow$ \texttt{sendNotification()} to researcher. Consensus irrelevant. \\
+    R4 & REVISION REQUIRED & Scores collected $\rightarrow$ average $\geq$ 7.0 but consensus not reached (range $>$ 3.0) $\rightarrow$ \texttt{notifyRevision()} $\rightarrow$ \texttt{sendNotification()} to researcher. \\
+    R5 & REVISION REQUIRED & Scores collected $\rightarrow$ $5.0 \leq$ average $< 7.0$ $\rightarrow$ \texttt{notifyRevision()} $\rightarrow$ \texttt{sendNotification()} to researcher. Consensus check immaterial. \\
+    \bottomrule
+\end{tabularx}
+\end{table}
+
+% ══════════════════════════════════════════════════════════════════════════
+\section{Task 4 -- Optimised Sequence Diagram}
+\label{sec:task4}
+
+\subsection{Design Changes}
+
+The optimised sequence diagram addresses every design flaw identified in Task~2. The key architectural changes are:
+
+\textbf{Change 1: Split the Fat Controller.}
+The monolithic \texttt{SubmissionController} is split into three focused components:
+\begin{itemize}[nosep]
+    \item \texttt{SubmissionController} --- handles validation, submission persistence, and thin delegation to the services below
+    \item \texttt{ReviewAssignmentService} --- handles reviewer selection, filtering, and score collection
+    \item \texttt{EvaluationService} --- orchestrates score persistence and outcome determination
+\end{itemize}
+
+\textbf{Change 2: Repository Pattern (Replace God Object).}
+The monolithic \texttt{Database} class is replaced by three single-responsibility repositories:
+\begin{itemize}[nosep]
+    \item \texttt{SubmissionRepository} --- submission persistence only
+    \item \texttt{ReviewerRepository} --- reviewer data access only
+    \item \texttt{ScoreRepository} --- score persistence only
+\end{itemize}
+
+\textbf{Change 3: Centralised Decision Engine.}
+A \texttt{DecisionEngine} encapsulates the decision table from Task~3. The \texttt{EvaluationService} delegates outcome determination to the \texttt{DecisionEngine}, eliminating the scattered self-calls.
+
+\textbf{Change 4: Parameterised Notifications.}
+Three separate notification methods are replaced by a single \texttt{NotificationService.notify(EvaluationOutcome)}, where \texttt{EvaluationOutcome} is a type-safe enum (\texttt{ACCEPTED}, \texttt{REJECTED}, \texttt{REVISION\_REQUIRED}).
+
+\textbf{Change 5: Batch Score Persistence.}
+The per-score save loop (\texttt{Database.saveScore()} $\times$ N) is replaced by \texttt{ScoreRepository.saveAll(List<Score>)} --- a single batch operation.
+
+\textbf{Change 6: Decoupled Reviewer Scoring.}
+In the baseline, \texttt{Reviewer} directly calls \texttt{EvaluationManager.submitScore()}, creating tight coupling. In the optimised version, \texttt{ReviewAssignmentService} calls \texttt{Reviewer.generateScore()} (a pure function) and collects scores, eliminating the Reviewer $\rightarrow$ EvaluationManager dependency.
+
+\subsection{Optimised Participant List}
+
+\begin{table}[H]
+\centering
+\caption{Optimised sequence diagram participants}
+\label{tab:opt-participants}
+\begin{tabularx}{\textwidth}{l l X}
+    \toprule
+    \textbf{Participant} & \textbf{Stereotype} & \textbf{Responsibility} \\
+    \midrule
+    Researcher & actor & Submits research output \\
+    UI & boundary & Receives input, returns result \\
+    SubmissionController & control & Validation + persistence + delegation \\
+    Validator & entity & Format validation \\
+    SubmissionRepository & entity & Submission CRUD \\
+    ReviewAssignmentService & control & Reviewer filtering + score collection \\
+    ReviewerRepository & entity & Reviewer data access \\
+    Reviewer & entity & Score generation \\
+    EvaluationService & control & Score persistence + evaluation delegation \\
+    ScoreRepository & entity & Score batch persistence \\
+    DecisionEngine & entity & Decision table evaluation \\
+    NotificationService & boundary & Outcome notification \\
+    \bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Optimised Sequence Flow}
+
+\begin{lstlisting}[style=outputstyle]
+Researcher -> UI : submitResearchOutput(data)
+  UI -> SubmissionController : submit(data)
+    SubmissionController -> Validator : validateFormat(data) -> isValid
+    alt [invalid]: return error
+    else [valid]:
+      SubmissionController -> SubmissionRepository : save(data) -> submissionId
+      SubmissionController -> ReviewAssignmentService :
+          assignAndCollectScores(submissionId)
+        ReviewAssignmentService -> ReviewerRepository : findAll() -> candidates
+        [filter conflicts & workload in single pass]
+        loop: ReviewAssignmentService -> Reviewer : generateScore() -> value
+      -> List<Score>
+      SubmissionController -> EvaluationService : evaluate(submissionId, scores)
+        EvaluationService -> ScoreRepository : saveAll(scores)
+        EvaluationService -> DecisionEngine : evaluate(scores) -> Outcome
+      -> EvaluationOutcome
+      SubmissionController -> NotificationService : notify(outcome)
+    -> result
+  -> result
+\end{lstlisting}
+
+The full PlantUML diagram is available at \texttt{Optimised/diagrams/optimised\_sequence.puml}. Figure~\ref{fig:opt-seq} shows the rendered diagram.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{optimised_sequence.png}
+    \caption{Optimised ISRS sequence diagram}
+    \label{fig:opt-seq}
+\end{figure}
+
+\subsection{Interaction Count Comparison}
+
+\begin{table}[H]
+\centering
+\caption{Interaction count comparison between baseline and optimised diagrams}
+\label{tab:interaction-comparison}
+\begin{tabular}{l c c}
+    \toprule
+    \textbf{Metric} & \textbf{Baseline} & \textbf{Optimised} \\
+    \midrule
+    Named message calls (excl.\ loops) & 17 & 10 \\
+    Self-calls & 5 & 0 \\
+    Database/Repository calls & 5 & 3 \\
+    Notification methods & 3 (+1 send) & 1 \\
+    Loop fragments & 2 & 1 \\
+    Participants & 9 & 12 \\
+    \bottomrule
+\end{tabular}
+\end{table}
+
+The optimised diagram has more participants (12 vs 9) but significantly fewer interactions --- a trade-off of structural complexity for reduced behavioural complexity.
+
+\subsection{Design Quality Improvements Demonstrated}
+
+\textbf{Improved Cohesion.}
+Each class now has a single, well-defined responsibility. The baseline's \texttt{SubmissionController} handled validation, persistence, reviewer assignment, evaluation, and notification --- five concerns. The optimised design distributes these across \texttt{SubmissionController} (validation + delegation), \texttt{ReviewAssignmentService} (reviewer filtering + score collection), \texttt{EvaluationService} (evaluation orchestration), \texttt{DecisionEngine} (decision logic), and \texttt{NotificationService} (notification). Similarly, the monolithic \texttt{Database} splits into three single-purpose repositories.
+
+\textbf{Reduced Coupling.}
+The optimised \texttt{SubmissionController} has 5 dependencies (one more than the baseline's 4), but each is now a focused, single-responsibility service rather than a mixed-concern class. The key coupling improvement is elsewhere: the \texttt{Reviewer} entity no longer depends on \texttt{EvaluationManager} --- it exposes a pure \texttt{generateScore()} method with no outgoing service dependencies. The bidirectional Reviewer $\leftrightarrow$ EvaluationManager coupling is eliminated entirely. Additionally, the monolithic \texttt{Database} is no longer a coupling hub; each repository is used only by the component that needs it.
+
+\textbf{Cleaner Control Flow.}
+The optimised diagram reads as a linear pipeline with clear phase separations (Submission $\rightarrow$ Assignment $\rightarrow$ Evaluation $\rightarrow$ Notification). The five self-calls in the baseline (\texttt{filterConflicts}, \texttt{checkWorkload}, \texttt{calculateAverage}, \texttt{checkConsensus}, \texttt{applyRules}) are eliminated. Filtering is internalised within \texttt{ReviewAssignmentService}, and scoring/consensus/rules are consolidated into the \texttt{DecisionEngine.evaluate()} call.
+
+\textbf{Better Separation of Concerns.}
+The design follows a boundary--control--entity (BCE) architecture: \texttt{UI} and \texttt{NotificationService} are boundaries, the three services are controllers, and repositories, \texttt{Validator}, \texttt{Reviewer}, and \texttt{DecisionEngine} are entities. This separation ensures that changes to persistence, business rules, or notifications do not propagate across concern boundaries.
+
+% ══════════════════════════════════════════════════════════════════════════
+\section{Task 5 -- Optimised Implementation}
+\label{sec:task5}
+
+\subsection{Implementation Overview}
+
+The optimised implementation directly reflects the sequence diagram from Task~4. Every participant maps to a Java class, and every message call maps to a method invocation.
+
+\textbf{Source code:} \texttt{Optimised/src/main/java/com/isrs/optimised/}
+
+\subsection{Class Mapping}
+
+\begin{table}[H]
+\centering
+\caption{Mapping between optimised and baseline classes}
+\label{tab:class-mapping}
+\begin{tabularx}{\textwidth}{l l X}
+    \toprule
+    \textbf{Optimised Class} & \textbf{Baseline Equivalent} & \textbf{Key Change} \\
+    \midrule
+    \texttt{SubmissionController} & \texttt{SubmissionController} & 95 $\rightarrow$ 65 LOC; delegates \\
+    \texttt{ReviewAssignmentService} & Controller + ReviewerManager & New: reviewer filtering + scores \\
+    \texttt{EvaluationService} & \texttt{EvaluationManager} & Delegates to DecisionEngine \\
+    \texttt{DecisionEngine} & \texttt{applyRules()} & New: decision table logic \\
+    \texttt{SubmissionRepository} & \texttt{Database} (partial) & Submission persistence only \\
+    \texttt{ReviewerRepository} & \texttt{Database} (partial) & Reviewer data access only \\
+    \texttt{ScoreRepository} & \texttt{Database} (partial) & Score persistence (batch) \\
+    \texttt{NotificationService} & \texttt{NotificationService} & 53 $\rightarrow$ 19 LOC; single method \\
+    \texttt{EvaluationOutcome} & --- & New: type-safe enum \\
+    \texttt{Validator} & \texttt{Validator} & Unchanged \\
+    \texttt{UI} & \texttt{UI} & Unchanged \\
+    \texttt{Reviewer} & \texttt{Reviewer} & Pure \texttt{generateScore()} \\
+    \bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Key Refactoring Decisions}
+
+\subsubsection{Reviewer Decoupling}
+
+In the baseline, \texttt{Reviewer.submitScore(EvaluationManager)} creates tight coupling. In the optimised version, \texttt{Reviewer.generateScore()} is a pure function with no dependencies:
+
+\begin{lstlisting}
+// Baseline: Reviewer calls EvaluationManager (tight coupling)
+reviewer.submitScore(evaluationManager);
+
+// Optimised: Service orchestrates, Reviewer has no dependency
+double score = reviewer.generateScore();
+scores.add(new Score(reviewer.getReviewerId(), submissionId, score));
+\end{lstlisting}
+
+\subsubsection{Batch Score Persistence}
+
+The baseline saves each score individually inside a loop. The optimised version collects all scores first, then persists them in a single batch:
+
+\begin{lstlisting}
+// Baseline: N database calls
+for (Reviewer r : reviewers) {
+    r.submitScore(evaluationManager); // calls database.saveScore()
+}
+
+// Optimised: 1 batch call
+scoreRepository.saveAll(scores);
+\end{lstlisting}
+
+\subsubsection{Decision Engine Encapsulation}
+
+The \texttt{DecisionEngine.evaluate(List<Score>)} method encapsulates all decision table logic:
+
+\begin{lstlisting}
+public EvaluationOutcome evaluate(List<Score> scores) {
+    double average = scores.stream()
+            .mapToDouble(Score::getScore).average().orElse(0.0);
+    double min = scores.stream()
+            .mapToDouble(Score::getScore).min().orElse(0.0);
+    double max = scores.stream()
+            .mapToDouble(Score::getScore).max().orElse(0.0);
+    boolean consensus = (max - min) <= CONSENSUS_RANGE;
+
+    if (average < REJECT_THRESHOLD)
+        return REJECTED;                    // R3
+    if (average >= ACCEPT_THRESHOLD && consensus)
+        return ACCEPTED;                    // R2
+    return REVISION_REQUIRED;               // R4, R5
+}
+\end{lstlisting}
+
+\subsection{Diagram-to-Code Traceability}
+
+Table~\ref{tab:opt-traceability} maps every forward message call in the optimised sequence diagram (Task~4) to the corresponding Java method invocation, confirming that the code is aligned with the optimised model.
+
+\begin{longtable}{c p{5.5cm} p{6.5cm}}
+    \caption{Optimised sequence diagram traceability}
+    \label{tab:opt-traceability} \\
+    \toprule
+    \textbf{\#} & \textbf{Diagram Message} & \textbf{Java Method Call} \\
+    \midrule
+    \endfirsthead
+    \toprule
+    \textbf{\#} & \textbf{Diagram Message} & \textbf{Java Method Call} \\
+    \midrule
+    \endhead
+    1 & Researcher $\rightarrow$ UI : submitResearchOutput(data) & \texttt{UI.submitResearchOutput()} \\
+    2 & UI $\rightarrow$ Controller : submit(data) & \texttt{SubmissionController.submit()} \\
+    3 & Controller $\rightarrow$ Validator : validateFormat(data) & \texttt{Validator.validateFormat()} \\
+    4 & Controller $\rightarrow$ SubRepo : save(data) & \texttt{SubmissionRepository.save()} \\
+    5 & Controller $\rightarrow$ RAS : assignAndCollectScores() & \texttt{ReviewAssignmentService.assignAndCollectScores()} \\
+    6 & RAS $\rightarrow$ ReviewerRepo : findAll() & \texttt{ReviewerRepository.findAll()} \\
+    7 & loop: RAS $\rightarrow$ Reviewer : generateScore() & \texttt{Reviewer.generateScore()} \\
+    8 & Controller $\rightarrow$ EvalService : evaluate(id, scores) & \texttt{EvaluationService.evaluate()} \\
+    9 & EvalService $\rightarrow$ ScoreRepo : saveAll(scores) & \texttt{ScoreRepository.saveAll()} \\
+    10 & EvalService $\rightarrow$ DecisionEngine : evaluate(scores) & \texttt{DecisionEngine.evaluate()} \\
+    11 & Controller $\rightarrow$ NotifService : notify(outcome) & \texttt{NotificationService.notify()} \\
+    \bottomrule
+\end{longtable}
+
+\subsection{Functional Equivalence}
+
+Both implementations produce identical outcomes for the same inputs:
+
+\begin{table}[H]
+\centering
+\caption{Functional equivalence verification}
+\label{tab:equivalence}
+\begin{tabular}{l l l}
+    \toprule
+    \textbf{Scenario} & \textbf{Baseline} & \textbf{Optimised} \\
+    \midrule
+    Valid submission (scores 7.5, 8.0, 8.5) & ACCEPTED & ACCEPTED \\
+    Invalid submission (empty title) & ERROR & ERROR \\
+    \bottomrule
+\end{tabular}
+\end{table}
+
+% ══════════════════════════════════════════════════════════════════════════
+\section{Task 6 -- Empirical Evaluation}
+\label{sec:task6}
+
+\subsection{Methodology}
+
+Both implementations were benchmarked using identical test scenarios (a valid submission with 5 reviewers, 3 eligible). Measurements include:
+
+\begin{enumerate}[nosep]
+    \item \textbf{Method call counts:} Using a \texttt{CallCounter} utility class that increments an atomic counter on each method entry.
+    \item \textbf{Execution time:} 100 warm-up runs (JIT compilation), followed by 1{,}000 timed runs. Console output is suppressed during timing to avoid I/O bias.
+    \item \textbf{Code complexity metrics:} Lines of code, methods per class, and constructor dependencies counted from source files.
+\end{enumerate}
+
+The benchmarks were run on \textbf{macOS} with \textbf{OpenJDK 21.0.10} (2026-01-20 LTS).
+
+\subsection{Method Call Counts}
+
+\subsubsection{Baseline --- 26 Total Method Calls}
+
+\begin{table}[H]
+\centering
+\caption{Baseline method call counts for a single valid submission}
+\label{tab:baseline-calls}
+\begin{tabular}{l r}
+    \toprule
+    \textbf{Method} & \textbf{Count} \\
+    \midrule
+    UI.submitResearchOutput & 1 \\
+    SubmissionController.submit & 1 \\
+    Validator.validateFormat & 1 \\
+    Database.saveSubmission & 1 \\
+    ReviewerManager.getAvailableReviewers & 1 \\
+    Database.fetchReviewers & 1 \\
+    ReviewerManager.filterConflicts & 1 \\
+    ReviewerManager.checkWorkload & 1 \\
+    Reviewer.assignReview & 3 \\
+    EvaluationManager.startEvaluation & 1 \\
+    Reviewer.submitScore & 3 \\
+    EvaluationManager.submitScore & 3 \\
+    Database.saveScore & 3 \\
+    EvaluationManager.calculateAverage & 1 \\
+    EvaluationManager.checkConsensus & 1 \\
+    EvaluationManager.applyRules & 1 \\
+    NotificationService.notifyAcceptance & 1 \\
+    NotificationService.sendNotification & 1 \\
+    \midrule
+    \textbf{TOTAL} & \textbf{26} \\
+    \bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Optimised --- 13 Total Method Calls}
+
+\begin{table}[H]
+\centering
+\caption{Optimised method call counts for a single valid submission}
+\label{tab:optimised-calls}
+\begin{tabular}{l r}
+    \toprule
+    \textbf{Method} & \textbf{Count} \\
+    \midrule
+    UI.submitResearchOutput & 1 \\
+    SubmissionController.submit & 1 \\
+    Validator.validateFormat & 1 \\
+    SubmissionRepository.save & 1 \\
+    ReviewAssignmentService.assignAndCollectScores & 1 \\
+    ReviewerRepository.findAll & 1 \\
+    Reviewer.generateScore & 3 \\
+    EvaluationService.evaluate & 1 \\
+    ScoreRepository.saveAll & 1 \\
+    DecisionEngine.evaluate & 1 \\
+    NotificationService.notify & 1 \\
+    \midrule
+    \textbf{TOTAL} & \textbf{13} \\
+    \bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Call Count Analysis}
+
+The optimised version reduces method calls by \textbf{50\%} (26 $\rightarrow$ 13). The key reductions are shown in Table~\ref{tab:call-reductions}.
+
+\begin{table}[H]
+\centering
+\caption{Sources of method call reduction}
+\label{tab:call-reductions}
+\begin{tabularx}{\textwidth}{X c X}
+    \toprule
+    \textbf{Change} & \textbf{Net Saved} & \textbf{Explanation} \\
+    \midrule
+    Batch score persistence & 2 & 3 $\times$ \texttt{Database.saveScore} $\rightarrow$ 1 $\times$ \texttt{ScoreRepository.saveAll} \\
+    Reviewer decoupling & 3 & 3 $\times$ \texttt{Reviewer.submitScore} + 3 $\times$ \texttt{EvalManager.submitScore} eliminated; \texttt{Reviewer.generateScore} already counted \\
+    Self-call elimination & 2 & 3 self-calls (\texttt{calculateAverage}, \texttt{checkConsensus}, \texttt{applyRules}) $\rightarrow$ 1 $\times$ \texttt{DecisionEngine.evaluate} \\
+    Combined reviewer filtering & 2 & \texttt{filterConflicts} + \texttt{checkWorkload} inlined into service \\
+    Reviewer assignment absorbed & 3 & 3 $\times$ \texttt{Reviewer.assignReview} absorbed into \texttt{assignAndCollectScores} \\
+    Combined notification & 1 & \texttt{notifyAcceptance} + \texttt{sendNotification} $\rightarrow$ 1 $\times$ \texttt{notify(outcome)} \\
+    startEvaluation eliminated & 0 & Replaced by \texttt{EvaluationService.evaluate} (1 for 1) \\
+    \midrule
+    \textbf{Total saved} & \textbf{13} & 26 $-$ 13 = 13 \\
+    \bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Execution Time}
+
+\begin{table}[H]
+\centering
+\caption{Execution time comparison (1{,}000 runs after 100 warm-up)}
+\label{tab:timing}
+\begin{tabular}{l r r r}
+    \toprule
+    \textbf{Metric} & \textbf{Baseline} & \textbf{Optimised} & \textbf{Change} \\
+    \midrule
+    Mean    & 26{,}502 ns (0.027 ms) & 24{,}223 ns (0.024 ms) & $-9\%$ \\
+    Median  & 20{,}000 ns (0.020 ms) & 16{,}563 ns (0.017 ms) & $-17\%$ \\
+    Min     & 12{,}167 ns            & 8{,}459 ns             & $-30\%$ \\
+    Max     & 229{,}125 ns           & 294{,}542 ns           & --- \\
+    StdDev  & 21{,}552 ns            & 22{,}968 ns            & --- \\
+    \bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:} The optimised version is faster across all central-tendency metrics (mean, median, and minimum). This is attributable to:
+
+\begin{enumerate}[nosep]
+    \item \textbf{50\% fewer method calls:} 13 calls vs 26 means fewer stack frames, less dispatch overhead, and less \texttt{CallCounter} instrumentation.
+    \item \textbf{Batch persistence:} A single \texttt{saveAll()} call replaces three individual \texttt{saveScore()} calls, reducing HashMap operations.
+    \item \textbf{Elimination of self-calls:} The five self-calls in the baseline each carry method invocation overhead that the optimised version avoids.
+    \item \textbf{Streamlined notification:} One \texttt{notify(outcome)} call replaces a switch statement dispatching to three separate methods plus a \texttt{sendNotification()} call.
+\end{enumerate}
+
+The maximum time is higher for the optimised version (294{,}542 ns vs 229{,}125 ns), likely due to garbage collection pauses from the additional object allocations (3 repositories vs 1 Database). At the nanosecond scale, outliers are dominated by JIT recompilation and GC. Both versions execute in under 0.03 ms in the median case --- the difference of $\sim$3{,}400 ns (0.003 ms) is imperceptible in any real-world context.
+
+\subsection{Code Complexity Metrics}
+
+\subsubsection{Lines of Code per Core Class}
+
+\begin{table}[H]
+\centering
+\caption{Lines of code comparison (core classes only)}
+\label{tab:loc}
+\begin{tabular}{l r c l r}
+    \toprule
+    \textbf{Baseline Class} & \textbf{LOC} & & \textbf{Optimised Class} & \textbf{LOC} \\
+    \midrule
+    SubmissionController & 95 & $\rightarrow$ & SubmissionController & 65 \\
+    EvaluationManager & 133 & $\rightarrow$ & EvaluationService & 39 \\
+    ReviewerManager & 80 & $\rightarrow$ & ReviewAssignmentService & 69 \\
+    Database & 66 & $\rightarrow$ & SubmissionRepository & 26 \\
+    Reviewer & 66 & $\rightarrow$ & ReviewerRepository & 23 \\
+    NotificationService & 53 & & ScoreRepository & 30 \\
+    Validator & 43 & & DecisionEngine & 57 \\
+    UI & 33 & & NotificationService & 19 \\
+    & & & EvaluationOutcome & 11 \\
+    & & & Validator & 37 \\
+    & & & Reviewer & 44 \\
+    & & & UI & 21 \\
+    \midrule
+    \textbf{Total} & \textbf{569} & & \textbf{Total} & \textbf{441} \\
+    \textbf{Average} & \textbf{71} & & \textbf{Average} & \textbf{37} \\
+    \bottomrule
+\end{tabular}
+\end{table}
+
+The optimised version has \textbf{22\% fewer total lines} despite having more classes. Average class size drops from 71 LOC (8 classes) to 37 LOC (12 classes), indicating better cohesion.
+
+\subsubsection{Constructor Dependencies (Efferent Coupling)}
+
+\begin{table}[H]
+\centering
+\caption{Constructor dependency comparison}
+\label{tab:coupling}
+\small
+\begin{tabularx}{\textwidth}{@{} p{4.5cm} p{4.5cm} X @{}}
+    \toprule
+    \textbf{Class} & \textbf{Baseline} & \textbf{Optimised} \\
+    \midrule
+    SubmissionController & 4 & 5 (focused services) \\
+    ReviewerManager / ReviewAssignmentService & 1 & 1 \\
+    EvaluationManager / EvaluationService & 2 (Database, NotificationService) & 2 (ScoreRepository, DecisionEngine) \\
+    NotificationService & 0 & 0 \\
+    \bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{Maintainability Scenarios}
+
+\begin{table}[H]
+\centering
+\caption{Impact analysis for common change scenarios}
+\label{tab:maintainability}
+\begin{tabularx}{\textwidth}{X c c}
+    \toprule
+    \textbf{Change Scenario} & \textbf{Baseline} & \textbf{Optimised} \\
+    \midrule
+    Add new evaluation outcome & 3 classes & 2 classes \\
+    Change score persistence strategy & 2 classes & 1 class \\
+    Add new reviewer eligibility criterion & 1 class & 1 class \\
+    Add audit logging for decisions & 1 class & 1 class \\
+    \bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Evaluation Summary}
+
+\begin{table}[H]
+\centering
+\caption{Overall empirical evaluation summary}
+\label{tab:eval-summary}
+\begin{tabular}{l r r r}
+    \toprule
+    \textbf{Metric} & \textbf{Baseline} & \textbf{Optimised} & \textbf{Improvement} \\
+    \midrule
+    Method calls per submission & 26 & 13 & \textbf{$-50\%$} \\
+    Total LOC (core classes) & 569 & 441 & \textbf{$-22\%$} \\
+    Average LOC per class & 71 & 37 & \textbf{$-48\%$} \\
+    Number of classes & 8 & 12 & $+4$ (trade-off) \\
+    Max class LOC & 133 & 69 & \textbf{$-48\%$} \\
+    Self-calls in sequence & 5 & 0 & \textbf{Eliminated} \\
+    Database calls per submission & 5 & 3 & \textbf{$-40\%$} \\
+    Classes changed for new outcome & 3 & 2 & \textbf{$-33\%$} \\
+    Execution time (median) & 0.020 ms & 0.017 ms & \textbf{$-17\%$} \\
+    \bottomrule
+\end{tabular}
+\end{table}
+
+The optimised design delivers substantial improvements across all measured metrics: method call efficiency ($-50\%$), code size ($-22\%$), average class size ($-48\%$), execution time ($-17\%$ median), and maintainability. The only trade-off is an increased number of classes (8 $\rightarrow$ 12), which is a deliberate architectural decision to improve cohesion and separation of concerns.
+
+\subsection{Trade-offs Introduced by Optimisation}
+
+\begin{enumerate}
+    \item \textbf{Increased structural complexity:} The optimised design has 12 classes vs 8. A developer new to the codebase must understand more files, though each file is smaller and more focused. Navigation overhead increases, but comprehension per file decreases.
+
+    \item \textbf{Higher object allocation:} Each submission run instantiates 3 repository objects, 3 services, a DecisionEngine, and an enum value, versus 1 Database, 1 ReviewerManager, and 1 EvaluationManager. This marginally increases GC pressure, visible in the higher maximum execution time (294{,}542 ns vs 229{,}125 ns).
+
+    \item \textbf{SubmissionController dependency count increased:} The controller went from 4 to 5 constructor dependencies. While each dependency is now a focused single-responsibility service, the raw dependency count is higher. This could be mitigated by introducing a fa\c{c}ade if further services are added.
+
+    \item \textbf{Indirection cost:} The \texttt{EvaluationService} $\rightarrow$ \texttt{DecisionEngine} delegation adds a layer of indirection. A developer tracing the evaluation flow must follow one additional hop. However, this enables independent testing and evolution of the decision logic.
+\end{enumerate}
+
+These trade-offs are characteristic of refactoring towards higher cohesion: structural complexity increases to reduce behavioural complexity. The empirical data confirms that the net effect is positive across all measured dimensions.
+
+% ══════════════════════════════════════════════════════════════════════════
+\section{Conclusion}
+\label{sec:conclusion}
+
+This assignment demonstrated the full lifecycle of design optimisation: from faithfully implementing a baseline behavioural model, through systematic design analysis, decision table extraction, and architectural redesign, to empirical validation of the improvements.
+
+The baseline implementation exposed several significant design flaws: a fat controller with five responsibilities, a God Object database with three unrelated concerns, redundant notification methods, per-score database persistence, and opaque decision logic buried in self-calls. The decision table (Task~3) made the system's acceptance/rejection/revision logic explicit and traceable.
+
+The optimised implementation addressed every identified issue through the Repository pattern (splitting the monolithic Database), service extraction (separating reviewer assignment and evaluation into dedicated services), a centralised DecisionEngine (encapsulating the decision table), and parameterised notifications. Empirical evaluation confirmed a \textbf{50\% reduction in method calls}, \textbf{22\% reduction in total code}, \textbf{48\% reduction in average class size}, and a \textbf{17\% faster median execution time}.
+
+The trade-off of having more classes (12 vs 8) is justified by the dramatically lower per-class complexity and improved maintainability --- demonstrated by the reduced number of classes that need modification when adding new features or changing existing behaviour.
+
+\end{document}

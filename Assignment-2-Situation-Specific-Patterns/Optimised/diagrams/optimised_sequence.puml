@@ -1,0 +1,106 @@
+@startuml Optimised Sequence Diagram
+
+title Optimised ISRS — Submission and Review Workflow
+
+actor Researcher
+boundary UI
+control SubmissionController
+entity Validator
+entity SubmissionRepository
+control ReviewAssignmentService
+entity ReviewerRepository
+entity Reviewer
+control EvaluationService
+entity ScoreRepository
+entity DecisionEngine
+boundary NotificationService
+
+== Submission Phase ==
+
+Researcher -> UI : submitResearchOutput(data)
+activate UI
+
+UI -> SubmissionController : submit(data)
+activate SubmissionController
+
+SubmissionController -> Validator : validateFormat(data)
+activate Validator
+Validator --> SubmissionController : isValid
+deactivate Validator
+
+alt isValid == false
+    SubmissionController --> UI : "ERROR: Invalid format"
+    UI --> Researcher : error message
+else isValid == true
+
+    SubmissionController -> SubmissionRepository : save(data)
+    activate SubmissionRepository
+    SubmissionRepository --> SubmissionController : submissionId
+    deactivate SubmissionRepository
+
+    == Reviewer Assignment Phase ==
+
+    SubmissionController -> ReviewAssignmentService : assignAndCollectScores(submissionId)
+    activate ReviewAssignmentService
+
+    ReviewAssignmentService -> ReviewerRepository : findAll()
+    activate ReviewerRepository
+    ReviewerRepository --> ReviewAssignmentService : candidates
+    deactivate ReviewerRepository
+
+    note right of ReviewAssignmentService
+        Filter conflicts & workload
+        in a single pass
+    end note
+
+    loop for each eligible reviewer
+        ReviewAssignmentService -> Reviewer : generateScore()
+        activate Reviewer
+        Reviewer --> ReviewAssignmentService : scoreValue
+        deactivate Reviewer
+    end
+
+    ReviewAssignmentService --> SubmissionController : List<Score>
+    deactivate ReviewAssignmentService
+
+    == Evaluation Phase ==
+
+    SubmissionController -> EvaluationService : evaluate(submissionId, scores)
+    activate EvaluationService
+
+    EvaluationService -> ScoreRepository : saveAll(scores)
+    activate ScoreRepository
+    ScoreRepository --> EvaluationService : done
+    deactivate ScoreRepository
+
+    EvaluationService -> DecisionEngine : evaluate(scores)
+    activate DecisionEngine
+
+    note right of DecisionEngine
+        Decision table logic:
+        R2: avg≥7.0 & consensus → ACCEPTED
+        R3: avg<5.0 → REJECTED
+        R4/R5: else → REVISION_REQUIRED
+    end note
+
+    DecisionEngine --> EvaluationService : EvaluationOutcome
+    deactivate DecisionEngine
+
+    EvaluationService --> SubmissionController : EvaluationOutcome
+    deactivate EvaluationService
+
+    == Notification Phase ==
+
+    SubmissionController -> NotificationService : notify(outcome)
+    activate NotificationService
+    NotificationService --> SubmissionController : done
+    deactivate NotificationService
+
+    SubmissionController --> UI : result
+    deactivate SubmissionController
+    UI --> Researcher : result
+    deactivate UI
+
+end
+
+@enduml
